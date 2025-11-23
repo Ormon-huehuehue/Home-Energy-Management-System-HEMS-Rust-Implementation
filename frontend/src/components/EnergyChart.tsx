@@ -18,7 +18,7 @@ export default function EnergyChart({ data }: EnergyChartProps) {
     // Note: Removed .reverse() as data should be chronological
 
     return (
-        <div className="card" style={{ gridColumn: 'span 2', height: '500px', display: 'flex', flexDirection: 'column' }}>
+        <div className="card" style={{ gridColumn: 'span 4', height: '500px', display: 'flex', flexDirection: 'column' }}>
             <div className="card-header">
                 <div className="card-title">Energy Flow History</div>
             </div>

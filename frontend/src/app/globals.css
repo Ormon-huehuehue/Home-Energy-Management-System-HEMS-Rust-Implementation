@@ -93,11 +93,23 @@ body {
 /* Grid Layout */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 2.5rem;
-  padding: 3rem; /* Reduced top padding since header has it */
+  padding: 3rem;
   max-width: 1800px;
   margin: 0 auto;
+}
+
+@media (max-width: 1400px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card {

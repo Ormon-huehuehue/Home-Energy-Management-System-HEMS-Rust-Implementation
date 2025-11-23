@@ -10,14 +10,20 @@ interface DeviceListProps {
 
 export default function DeviceList({ devices, onToggle }: DeviceListProps) {
     return (
-        <div className="card" style={{ gridColumn: 'span 2' }}>
+        <div className="card" style={{ gridColumn: 'span 4' }}>
             <div className="card-header">
                 <div className="card-title">
                     <Zap size={20} strokeWidth={1.5} />
                     Connected Devices
                 </div>
             </div>
-            <div style={{ display: 'grid', gap: '1px', backgroundColor: 'var(--card-border)', border: '1px solid var(--card-border)' }}>
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                gap: '1px', 
+                backgroundColor: 'var(--card-border)', 
+                border: '1px solid var(--card-border)' 
+            }}>
                 {devices.map((device) => (
                     <div key={device.id} style={{ 
                         display: 'flex', 
