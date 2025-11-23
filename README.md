@@ -110,7 +110,7 @@ cd backend/hems-core
 cargo run
 ```
 
-_Server will start on `http://127.0.0.1:3000`_
+_Server will start on `http://localhost:3000`_
 
 ### Step 2: Start the Frontend
 
