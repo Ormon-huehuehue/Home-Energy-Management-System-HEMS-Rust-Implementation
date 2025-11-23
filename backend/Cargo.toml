@@ -1,0 +1,3 @@
+[workspace]
+members = ["hems-core"]
+resolver = "2"
