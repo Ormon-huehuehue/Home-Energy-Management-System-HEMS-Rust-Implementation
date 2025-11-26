@@ -1,21 +1,35 @@
 use sqlx::SqlitePool;
 use tokio::time::{Duration};
-use chrono::{Utc, Timelike};
+use chrono::{Utc, Timelike, NaiveDateTime};
 use rand::Rng;
+
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub struct Simulator {
     pool: SqlitePool,
+    current_time: Arc<Mutex<NaiveDateTime>>,
 }
 
 impl Simulator {
     pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self { 
+            pool,
+            current_time: Arc::new(Mutex::new(Utc::now().naive_utc())),
+        }
     }
 
     pub async fn start(&self) {
-        let mut interval = tokio::time::interval(Duration::from_secs(5));
+        let mut interval = tokio::time::interval(Duration::from_secs(2));
         loop {
             interval.tick().await;
+            
+            // Advance time by 30 minutes
+            {
+                let mut time = self.current_time.lock().await;
+                *time += chrono::Duration::minutes(30);
+            }
+
             if let Err(e) = self.generate_data().await {
                 tracing::error!("Simulation error: {}", e);
             }
@@ -23,7 +37,7 @@ impl Simulator {
     }
 
     async fn generate_data(&self) -> Result<(), sqlx::Error> {
-        let now = Utc::now().naive_utc();
+        let now = *self.current_time.lock().await;
         
         let (solar_generation, home_consumption, battery_soc) = {
             let mut rng = rand::rng();
@@ -31,7 +45,7 @@ impl Simulator {
             // Solar: Peak at noon (simple Gaussian-like curve)
             let hour = now.hour() as f64 + now.minute() as f64 / 60.0;
             let solar_potential = if hour > 6.0 && hour < 18.0 {
-                let peak = 5.0; // 5kW peak
+                let peak = 2.0; // 2kW peak
                 let x = (hour - 12.0) / 3.0; // Width factor
                 peak * (-x * x).exp()
             } else {

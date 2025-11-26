@@ -17,7 +17,7 @@ pub async fn get_latest_energy(State(pool): State<SqlitePool>) -> Json<Option<En
         r#"
         SELECT id, timestamp, grid_import, grid_export, solar_generation, battery_charge, battery_discharge, home_consumption, battery_soc
         FROM energy_data
-        ORDER BY timestamp DESC
+        ORDER BY id DESC
         LIMIT 1
         "#
     )

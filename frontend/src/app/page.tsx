@@ -17,7 +17,7 @@ export default function Dashboard() {
         try {
             // Fetch latest energy data (mocking history by keeping local state for now, 
             // in real app we'd fetch history endpoint)
-            const energyRes = await fetch('/api/energy');
+            const energyRes = await fetch('/api/energy', { cache: 'no-store' });
             const energyJson = await energyRes.json();
             
             if (energyJson) {
@@ -31,7 +31,7 @@ export default function Dashboard() {
                 });
             }
 
-            const devicesRes = await fetch('/api/devices');
+            const devicesRes = await fetch('/api/devices', { cache: 'no-store' });
             const devicesJson = await devicesRes.json();
             setDevices(devicesJson);
         } catch (error) {
@@ -114,6 +114,15 @@ export default function Dashboard() {
             </div>
             
             <TheorySection />
+            
+            {/* Debug View */}
+            <div style={{ padding: '1rem', background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: '12px', marginTop: '2rem' }}>
+                <h3>Debug Info</h3>
+                <div>Latest ID: {latest?.id}</div>
+                <div>Data Points: {energyData.length}</div>
+                <div>Last Fetch: {new Date().toLocaleTimeString()}</div>
+                <pre>{JSON.stringify(energyData.slice(-2), null, 2)}</pre>
+            </div>
         </main>
     );
 }

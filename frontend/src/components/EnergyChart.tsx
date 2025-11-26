@@ -54,7 +54,7 @@ export default function EnergyChart({ data }: EnergyChartProps) {
                         <Area 
                             type="step" 
                             dataKey="solar" 
-                            stroke="#e5e5e5" 
+                            stroke="#525252" 
                             strokeWidth={1.5}
                             fill="none" 
                             name="Solar" 
@@ -62,7 +62,7 @@ export default function EnergyChart({ data }: EnergyChartProps) {
                         <Area 
                             type="step" 
                             dataKey="consumption" 
-                            stroke="#525252" 
+                            stroke="#e5e5e5" 
                             strokeWidth={1.5}
                             strokeDasharray="4 4"
                             fill="none" 
