@@ -1,0 +1,7 @@
+target/
+**/*.rs.bk
+db.sqlite
+hems.db
+hems.db-shm
+hems.db-wal
+.env
