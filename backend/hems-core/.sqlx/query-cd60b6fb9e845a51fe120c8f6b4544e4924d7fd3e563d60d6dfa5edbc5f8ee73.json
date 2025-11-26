@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT id, timestamp, grid_import, grid_export, solar_generation, battery_charge, battery_discharge, home_consumption, battery_soc\n        FROM energy_data\n        ORDER BY id DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 1,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "grid_import",
+        "ordinal": 2,
+        "type_info": "Float"
+      },
+      {
+        "name": "grid_export",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "solar_generation",
+        "ordinal": 4,
+        "type_info": "Float"
+      },
+      {
+        "name": "battery_charge",
+        "ordinal": 5,
+        "type_info": "Float"
+      },
+      {
+        "name": "battery_discharge",
+        "ordinal": 6,
+        "type_info": "Float"
+      },
+      {
+        "name": "home_consumption",
+        "ordinal": 7,
+        "type_info": "Float"
+      },
+      {
+        "name": "battery_soc",
+        "ordinal": 8,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cd60b6fb9e845a51fe120c8f6b4544e4924d7fd3e563d60d6dfa5edbc5f8ee73"
+}

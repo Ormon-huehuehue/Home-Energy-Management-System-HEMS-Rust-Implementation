@@ -6,15 +6,10 @@ WORKDIR /app
 # Install dependencies for building (pkg-config, libssl-dev for native-tls)
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 
-# Install sqlx-cli to run migrations for compile-time checks
-RUN cargo install sqlx-cli --no-default-features --features native-tls,sqlite
-
 COPY . .
 
-# Setup dummy database for build
-ENV DATABASE_URL=sqlite://hems.db
-RUN sqlx database create
-RUN sqlx migrate run
+# Enable SQLx offline mode
+ENV SQLX_OFFLINE=true
 
 # Build the application
 RUN cargo build --release
