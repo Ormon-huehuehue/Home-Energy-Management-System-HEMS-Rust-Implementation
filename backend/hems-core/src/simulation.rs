@@ -5,6 +5,7 @@ use rand::Rng;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use crate::models::Device;
 
 pub struct Simulator {
     pool: SqlitePool,
@@ -38,6 +39,14 @@ impl Simulator {
 
     async fn generate_data(&self) -> Result<(), sqlx::Error> {
         let now = *self.current_time.lock().await;
+
+        // Fetch devices to calculate real load
+        let devices = sqlx::query_as!(
+            Device,
+            "SELECT id, name, device_type, power_rating, is_on, priority FROM devices"
+        )
+        .fetch_all(&self.pool)
+        .await?;
         
         let (solar_generation, home_consumption, battery_soc) = {
             let mut rng = rand::rng();
@@ -53,10 +62,19 @@ impl Simulator {
             };
             let solar_generation = (solar_potential * rng.random_range(0.8..1.0)).max(0.0);
 
-            // Load: Base + random spikes
-            let base_load = 0.5; // 500W
-            let load_spike = if rng.random_bool(0.1) { 2.0 } else { 0.0 };
-            let home_consumption = base_load + load_spike + rng.random_range(0.0..0.2);
+            // Load: Base + Active Devices
+            let base_load = 0.1; // 100W base load (always on stuff)
+            
+            // Calculate load from active devices
+            let active_device_load: f64 = devices.iter()
+                .filter(|d| d.is_on)
+                .map(|d| d.power_rating)
+                .sum();
+
+            // Small random fluctuation
+            let fluctuation = rng.random_range(0.0..0.05);
+            
+            let home_consumption = base_load + active_device_load + fluctuation;
             
             // Mock SOC
             let battery_soc = 50.0 + rng.random_range(-1.0..1.0);
