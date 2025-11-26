@@ -10,10 +10,12 @@ A **Home Energy Management System (HEMS)** is a technology platform that monitor
 
 ### Key Objectives
 
-1.  **Maximize Self-Consumption**: Prioritize using locally generated renewable energy (Solar PV) over grid imports.
-2.  **Load Shifting**: Store excess energy in batteries during the day and discharge it during peak demand hours.
-3.  **Grid Stability**: Respond to demand-response signals (simulated) to reduce stress on the main grid.
-4.  **Cost Reduction**: Minimize electricity bills by reducing grid reliance.
+The primary goal of this project is to **reduce grid import** and optimize energy usage through **Demand Side Management (DSM)** techniques.
+
+1.  **Automated Load Shifting (DSR)**: Automatically shift non-critical loads (like HVAC) to off-peak hours to reduce stress on the grid.
+2.  **Maximize Self-Consumption**: Prioritize using locally generated renewable energy (Solar PV) over grid imports.
+3.  **Peak Shaving**: Discharge battery storage during peak demand hours (**18:00 - 22:00**) to flatten the load curve.
+4.  **Cost Reduction**: Minimize electricity bills by reducing reliance on the grid during expensive peak periods.
 
 ---
 
@@ -127,6 +129,14 @@ npm run dev
 ```
 
 _Dashboard will be available at `http://localhost:3001`_
+
+### ⚡ Automated Demand Response (New!)
+
+The system now features intelligent **Load Shifting** capabilities:
+
+- **Peak Shaving**: During peak hours (**18:00 - 22:00**), the system automatically turns off low-priority devices (like HVAC) to reduce grid strain.
+- **User Overrides**: Users can manually turn a device back ON. The system respects this override for **15 minutes** before attempting to manage the load again.
+- **Smart Notifications**: The dashboard alerts users via toast notifications when the system takes automated actions.
 
 ---
 

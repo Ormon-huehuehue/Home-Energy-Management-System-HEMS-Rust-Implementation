@@ -12,6 +12,19 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tower_http::cors::{Any, CorsLayer};
 use std::str::FromStr;
 
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use std::time::Instant;
+
+use sqlx::SqlitePool;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: SqlitePool,
+    pub user_overrides: Arc<Mutex<HashMap<i64, Instant>>>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
@@ -41,8 +54,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Migrations ran successfully");
 
+    // Initialize AppState
+    let user_overrides = Arc::new(Mutex::new(HashMap::new()));
+    let app_state = AppState {
+        pool: pool.clone(),
+        user_overrides: user_overrides.clone(),
+    };
+
     // Start Simulation
-    let simulator = simulation::Simulator::new(pool.clone());
+    let simulator = simulation::Simulator::new(pool.clone(), user_overrides.clone());
     tokio::spawn(async move {
         simulator.start().await;
     });
@@ -60,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/devices", get(api::get_devices))
         .route("/api/devices/{id}/control", axum::routing::post(api::control_device))
         .layer(cors)
-        .with_state(pool);
+        .with_state(app_state);
 
     // Run server
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

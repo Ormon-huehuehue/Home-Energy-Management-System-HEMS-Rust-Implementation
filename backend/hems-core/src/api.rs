@@ -2,7 +2,6 @@ use axum::{
     extract::{Path, State},
     Json,
 };
-use sqlx::SqlitePool;
 use crate::models::{EnergyData, Device};
 use serde::Deserialize;
 
@@ -11,7 +10,10 @@ pub struct DeviceControl {
     pub is_on: bool,
 }
 
-pub async fn get_latest_energy(State(pool): State<SqlitePool>) -> Json<Option<EnergyData>> {
+use crate::AppState;
+use std::time::Instant;
+
+pub async fn get_latest_energy(State(state): State<AppState>) -> Json<Option<EnergyData>> {
     let data = sqlx::query_as!(
         EnergyData,
         r#"
@@ -21,19 +23,19 @@ pub async fn get_latest_energy(State(pool): State<SqlitePool>) -> Json<Option<En
         LIMIT 1
         "#
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await
     .unwrap_or(None);
 
     Json(data)
 }
 
-pub async fn get_devices(State(pool): State<SqlitePool>) -> Json<Vec<Device>> {
+pub async fn get_devices(State(state): State<AppState>) -> Json<Vec<Device>> {
     let devices = sqlx::query_as!(
         Device,
         "SELECT id, name, device_type, power_rating, is_on, priority FROM devices"
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pool)
     .await
     .unwrap_or_default();
 
@@ -41,16 +43,22 @@ pub async fn get_devices(State(pool): State<SqlitePool>) -> Json<Vec<Device>> {
 }
 
 pub async fn control_device(
-    State(pool): State<SqlitePool>,
+    State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(payload): Json<DeviceControl>,
 ) -> Json<bool> {
+    // Record user override
+    {
+        let mut overrides = state.user_overrides.lock().await;
+        overrides.insert(id, Instant::now());
+    }
+
     let result = sqlx::query!(
         "UPDATE devices SET is_on = ? WHERE id = ?",
         payload.is_on,
         id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await;
 
     match result {

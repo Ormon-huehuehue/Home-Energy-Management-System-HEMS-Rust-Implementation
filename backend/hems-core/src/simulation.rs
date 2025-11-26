@@ -7,16 +7,21 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::models::Device;
 
+use std::collections::HashMap;
+use std::time::Instant;
+
 pub struct Simulator {
     pool: SqlitePool,
     current_time: Arc<Mutex<NaiveDateTime>>,
+    user_overrides: Arc<Mutex<HashMap<i64, Instant>>>,
 }
 
 impl Simulator {
-    pub fn new(pool: SqlitePool) -> Self {
+    pub fn new(pool: SqlitePool, user_overrides: Arc<Mutex<HashMap<i64, Instant>>>) -> Self {
         Self { 
             pool,
             current_time: Arc::new(Mutex::new(Utc::now().naive_utc())),
+            user_overrides,
         }
     }
 
@@ -41,12 +46,49 @@ impl Simulator {
         let now = *self.current_time.lock().await;
 
         // Fetch devices to calculate real load
-        let devices = sqlx::query_as!(
+        let mut devices = sqlx::query_as!(
             Device,
             "SELECT id, name, device_type, power_rating, is_on, priority FROM devices"
         )
         .fetch_all(&self.pool)
         .await?;
+
+        // Automated Demand Response (Load Shifting)
+        let hour = now.hour() as f64 + now.minute() as f64 / 60.0;
+        let is_peak = hour >= 18.0 && hour < 22.0;
+        let is_post_peak = hour >= 22.0 && hour < 22.5; // 30 mins after peak to restore
+
+        for device in &mut devices {
+            if device.priority < 2 { // Low priority
+                if is_peak && device.is_on {
+                    // Check for user override
+                    let last_override = {
+                        let overrides = self.user_overrides.lock().await;
+                        overrides.get(&device.id).cloned()
+                    };
+
+                    let should_turn_off = match last_override {
+                        Some(time) => time.elapsed().as_secs() > 24, // Override lasts 24 seconds(6 simulated hours)
+                        None => true,
+                    };
+
+                    if should_turn_off {
+                        tracing::info!("Peak Shaving: Turning OFF {}", device.name);
+                        sqlx::query!("UPDATE devices SET is_on = 0 WHERE id = ?", device.id)
+                            .execute(&self.pool)
+                            .await?;
+                        device.is_on = false; // Update local state for load calc
+                    }
+                } else if is_post_peak && !device.is_on {
+                    // Restore after peak
+                    tracing::info!("Peak Over: Restoring {}", device.name);
+                    sqlx::query!("UPDATE devices SET is_on = 1 WHERE id = ?", device.id)
+                        .execute(&self.pool)
+                        .await?;
+                    device.is_on = true;
+                }
+            }
+        }
         
         let (solar_generation, home_consumption, battery_soc) = {
             let mut rng = rand::rng();
