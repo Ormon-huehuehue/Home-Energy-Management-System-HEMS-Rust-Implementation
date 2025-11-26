@@ -58,6 +58,7 @@ export default function EnergyChart({ data }: EnergyChartProps) {
                             strokeWidth={1.5}
                             fill="none" 
                             name="Solar" 
+                            isAnimationActive={false}
                         />
                         <Area 
                             type="step" 
@@ -67,6 +68,7 @@ export default function EnergyChart({ data }: EnergyChartProps) {
                             strokeDasharray="4 4"
                             fill="none" 
                             name="Load" 
+                            isAnimationActive={false}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
