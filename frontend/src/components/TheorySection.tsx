@@ -54,18 +54,18 @@ export default function TheorySection() {
                             <div>
                                 <h4 style={{ color: 'var(--foreground)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Frontend: Next.js & Real-time Data</h4>
                                 <p style={{ lineHeight: '1.7', fontSize: '1rem' }}>
-                                    The user interface is built with <strong>Next.js 14</strong>. It employs a polling mechanism to fetch high-frequency telemetry data from the Rust API. 
+                                    The user interface is built with <strong>Next.js</strong>. It employs a polling mechanism to fetch high-frequency telemetry data from the Rust API. 
                                     The dashboard features a <strong>custom Design System</strong> built with CSS variables, enforcing a strict monochrome aesthetic. 
                                     Data visualization is handled by <code>Recharts</code>, rendering responsive SVG charts that update in real-time without page reloads.
                                 </p>
                             </div>
-                            <div>
+                            {/* <div>
                                 <h4 style={{ color: 'var(--foreground)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Future Scope</h4>
                                 <p style={{ lineHeight: '1.7', fontSize: '1rem' }}>
                                     Future iterations could integrate <strong>Model Predictive Control (MPC)</strong> to optimize energy flow based on weather forecasts and dynamic pricing tariffs. 
                                     Additionally, integration with physical hardware via Modbus/MQTT would transition this from a simulation to a field-deployable solution.
                                 </p>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </div>
