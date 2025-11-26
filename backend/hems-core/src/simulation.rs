@@ -1,35 +1,21 @@
 use sqlx::SqlitePool;
 use tokio::time::{Duration};
-use chrono::{Utc, Timelike, NaiveDateTime};
+use chrono::{Utc, Timelike};
 use rand::Rng;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 pub struct Simulator {
     pool: SqlitePool,
-    current_time: Arc<Mutex<NaiveDateTime>>,
 }
 
 impl Simulator {
     pub fn new(pool: SqlitePool) -> Self {
-        Self { 
-            pool,
-            current_time: Arc::new(Mutex::new(Utc::now().naive_utc())),
-        }
+        Self { pool }
     }
 
     pub async fn start(&self) {
-        // Run faster: every 1 second
-        let mut interval = tokio::time::interval(Duration::from_secs(1));
+        let mut interval = tokio::time::interval(Duration::from_secs(5));
         loop {
             interval.tick().await;
-            
-            // Advance time by 30 minutes
-            {
-                let mut time = self.current_time.lock().await;
-                *time += chrono::Duration::minutes(30);
-            }
-
             if let Err(e) = self.generate_data().await {
                 tracing::error!("Simulation error: {}", e);
             }
@@ -37,7 +23,7 @@ impl Simulator {
     }
 
     async fn generate_data(&self) -> Result<(), sqlx::Error> {
-        let now = *self.current_time.lock().await;
+        let now = Utc::now().naive_utc();
         
         let (solar_generation, home_consumption, battery_soc) = {
             let mut rng = rand::rng();
@@ -45,9 +31,9 @@ impl Simulator {
             // Solar: Peak at noon (simple Gaussian-like curve)
             let hour = now.hour() as f64 + now.minute() as f64 / 60.0;
             let solar_potential = if hour > 6.0 && hour < 18.0 {
-                let peak = 2.0; // 2kW peak (reduced from 5kW to allow grid imports)
+                let peak = 5.0; // 5kW peak
                 let x = (hour - 12.0) / 3.0; // Width factor
-                peak * (-x * x).exp() // simple gaussian curve -> e^(-x^2)
+                peak * (-x * x).exp()
             } else {
                 0.0
             };
@@ -90,7 +76,7 @@ impl Simulator {
         .execute(&self.pool)
         .await?;
         
-        tracing::info!("Generated at {}: Solar={:.2}kW, Load={:.2}kW, SOC={:.1}%", now, solar_generation, home_consumption, battery_soc);
+        tracing::info!("Generated: Solar={:.2}kW, Load={:.2}kW, SOC={:.1}%", solar_generation, home_consumption, battery_soc);
         Ok(())
     }
 }
