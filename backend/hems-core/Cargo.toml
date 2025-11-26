@@ -14,3 +14,4 @@ sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-native-tls", "c
 tokio = { version = "1.48.0", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+tower-http = { version = "0.6.2", features = ["cors"] }

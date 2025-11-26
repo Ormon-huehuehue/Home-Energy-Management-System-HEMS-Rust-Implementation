@@ -15,9 +15,11 @@ export default function Dashboard() {
 
     const fetchData = async () => {
         try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            
             // Fetch latest energy data (mocking history by keeping local state for now, 
             // in real app we'd fetch history endpoint)
-            const energyRes = await fetch('/api/energy', { cache: 'no-store' });
+            const energyRes = await fetch(`${apiUrl}/api/energy`, { cache: 'no-store' });
             const energyJson = await energyRes.json();
             
             if (energyJson) {
@@ -31,7 +33,7 @@ export default function Dashboard() {
                 });
             }
 
-            const devicesRes = await fetch('/api/devices', { cache: 'no-store' });
+            const devicesRes = await fetch(`${apiUrl}/api/devices`, { cache: 'no-store' });
             const devicesJson = await devicesRes.json();
             setDevices(devicesJson);
         } catch (error) {
@@ -47,7 +49,8 @@ export default function Dashboard() {
 
     const handleDeviceToggle = async (id: number, currentState: boolean) => {
         try {
-            await fetch(`/api/devices/${id}/control`, {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            await fetch(`${apiUrl}/api/devices/${id}/control`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ is_on: !currentState })

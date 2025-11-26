@@ -9,6 +9,7 @@ use axum::{
 use sqlx::sqlite::SqlitePoolOptions;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,16 +43,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         simulator.start().await;
     });
 
+    // Configure CORS
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     // Build router
     let app = Router::new()
         .route("/", get(root))
         .route("/api/energy", get(api::get_latest_energy))
         .route("/api/devices", get(api::get_devices))
         .route("/api/devices/{id}/control", axum::routing::post(api::control_device))
+        .layer(cors)
         .with_state(pool);
 
     // Run server
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::info!("listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
