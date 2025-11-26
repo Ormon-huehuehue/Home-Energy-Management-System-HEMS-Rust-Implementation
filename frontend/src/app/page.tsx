@@ -119,13 +119,13 @@ export default function Dashboard() {
             <TheorySection />
             
             {/* Debug View */}
-            <div style={{ padding: '1rem', background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: '12px', marginTop: '2rem' }}>
+            {/* <div style={{ padding: '1rem', background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: '12px', marginTop: '2rem' }}>
                 <h3>Debug Info</h3>
                 <div>Latest ID: {latest?.id}</div>
                 <div>Data Points: {energyData.length}</div>
                 <div>Last Fetch: {new Date().toLocaleTimeString()}</div>
                 <pre>{JSON.stringify(energyData.slice(-2), null, 2)}</pre>
-            </div>
+            </div> */}
         </main>
     );
 }
