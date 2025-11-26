@@ -25,11 +25,3 @@ pub struct Device {
     pub priority: i64, // Higher number = higher priority
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
-pub struct Tariff {
-    pub id: i64,
-    pub name: String,
-    pub rate: f64, // $/kWh
-    pub start_hour: i64, // 0-23
-    pub end_hour: i64, // 0-23
-}
