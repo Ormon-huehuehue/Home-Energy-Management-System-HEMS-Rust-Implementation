@@ -71,10 +71,11 @@ impl Simulator {
                 .map(|d| d.power_rating)
                 .sum();
 
-            // Small random fluctuation
-            let fluctuation = rng.random_range(0.0..0.05);
+            // Random fluctuation (noise) to make it look real
+            // Range: -0.1kW to +0.3kW
+            let fluctuation = rng.random_range(-0.1..0.3);
             
-            let home_consumption = base_load + active_device_load + fluctuation;
+            let home_consumption = (base_load + active_device_load + fluctuation).max(0.0);
             
             // Mock SOC
             let battery_soc = 50.0 + rng.random_range(-1.0..1.0);
