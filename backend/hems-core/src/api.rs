@@ -66,3 +66,37 @@ pub async fn control_device(
         Err(_) => Json(false),
     }
 }
+
+#[derive(Deserialize)]
+pub struct LoadShiftingControl {
+    pub enabled: bool,
+}
+
+pub async fn set_load_shifting(
+    State(state): State<AppState>,
+    Json(payload): Json<LoadShiftingControl>,
+) -> Json<bool> {
+    let mut enabled = state.load_shifting_enabled.lock().await;
+    *enabled = payload.enabled;
+    Json(true)
+}
+
+pub async fn get_load_shifting(State(state): State<AppState>) -> Json<bool> {
+    let enabled = *state.load_shifting_enabled.lock().await;
+    Json(enabled)
+}
+
+pub async fn generate_analysis_report(State(state): State<AppState>) -> Json<serde_json::Value> {
+    match crate::analysis::run_analysis(&state.pool).await {
+        Ok((files, summary, records)) => Json(serde_json::json!({
+            "success": true,
+            "files": files,
+            "summary": summary,
+            "data": records
+        })),
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}

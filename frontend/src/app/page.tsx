@@ -6,12 +6,15 @@ import EnergyCard from '@/components/EnergyCard';
 import DeviceList from '@/components/DeviceList';
 import EnergyChart from '@/components/EnergyChart';
 import TheorySection from '@/components/TheorySection';
+import ControlPanel from '@/components/ControlPanel';
+import AnalysisPanel from '@/components/AnalysisPanel';
 import { EnergyData, Device } from '@/types';
 
 export default function Dashboard() {
     const [energyData, setEnergyData] = useState<EnergyData[]>([]);
     const [devices, setDevices] = useState<Device[]>([]);
     const [latest, setLatest] = useState<EnergyData | null>(null);
+    const [loadShiftingEnabled, setLoadShiftingEnabled] = useState<boolean>(true);
     const [toast, setToast] = useState<{ show: boolean, message: string }>({ show: false, message: '' });
     const pendingToggle = useRef<Set<number>>(new Set());
 
@@ -72,6 +75,11 @@ export default function Dashboard() {
             }
 
             setDevices(devicesJson);
+
+            // Fetch load shifting status
+            const lsRes = await fetch(`${apiUrl}/api/control/load-shifting`, { cache: 'no-store' });
+            const lsJson = await lsRes.json();
+            setLoadShiftingEnabled(lsJson);
         } catch (error) {
             console.error("Failed to fetch data", error);
         }
@@ -96,6 +104,29 @@ export default function Dashboard() {
         } catch (error) {
             console.error("Failed to toggle device", error);
             pendingToggle.current.delete(id); // Revert if failed
+        }
+    };
+
+    const handleLoadShiftingToggle = async () => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const newState = !loadShiftingEnabled;
+            setLoadShiftingEnabled(newState); // Optimistic update
+            
+            await fetch(`${apiUrl}/api/control/load-shifting`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: newState })
+            });
+            
+            setToast({
+                show: true,
+                message: `Automated Load Shifting ${newState ? 'Enabled' : 'Disabled'}`
+            });
+            setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+        } catch (error) {
+            console.error("Failed to toggle load shifting", error);
+            setLoadShiftingEnabled(!loadShiftingEnabled); // Revert
         }
     };
 
@@ -150,6 +181,8 @@ export default function Dashboard() {
                 />
 
                 {/* Charts & Controls */}
+                <ControlPanel loadShiftingEnabled={loadShiftingEnabled} onToggle={handleLoadShiftingToggle} />
+                <AnalysisPanel />
                 <EnergyChart data={energyData} />
                 <DeviceList devices={devices} onToggle={handleDeviceToggle} />
             </div>

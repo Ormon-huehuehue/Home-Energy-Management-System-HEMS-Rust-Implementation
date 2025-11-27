@@ -1,6 +1,7 @@
 mod models;
 mod simulation;
 mod api;
+mod analysis;
 
 use axum::{
     routing::get,
@@ -23,6 +24,7 @@ use sqlx::SqlitePool;
 pub struct AppState {
     pub pool: SqlitePool,
     pub user_overrides: Arc<Mutex<HashMap<i64, Instant>>>,
+    pub load_shifting_enabled: Arc<Mutex<bool>>,
 }
 
 #[tokio::main]
@@ -56,13 +58,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize AppState
     let user_overrides = Arc::new(Mutex::new(HashMap::new()));
+    let load_shifting_enabled = Arc::new(Mutex::new(true)); // Default to enabled
     let app_state = AppState {
         pool: pool.clone(),
         user_overrides: user_overrides.clone(),
+        load_shifting_enabled: load_shifting_enabled.clone(),
     };
 
     // Start Simulation
-    let simulator = simulation::Simulator::new(pool.clone(), user_overrides.clone());
+    let simulator = simulation::Simulator::new(pool.clone(), user_overrides.clone(), load_shifting_enabled.clone());
     tokio::spawn(async move {
         simulator.start().await;
     });
@@ -79,6 +83,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/energy", get(api::get_latest_energy))
         .route("/api/devices", get(api::get_devices))
         .route("/api/devices/{id}/control", axum::routing::post(api::control_device))
+        .route("/api/control/load-shifting", axum::routing::post(api::set_load_shifting).get(api::get_load_shifting))
+        .route("/api/analysis/generate", axum::routing::post(api::generate_analysis_report))
         .layer(cors)
         .with_state(app_state);
 

@@ -14,14 +14,16 @@ pub struct Simulator {
     pool: SqlitePool,
     current_time: Arc<Mutex<NaiveDateTime>>,
     user_overrides: Arc<Mutex<HashMap<i64, Instant>>>,
+    load_shifting_enabled: Arc<Mutex<bool>>,
 }
 
 impl Simulator {
-    pub fn new(pool: SqlitePool, user_overrides: Arc<Mutex<HashMap<i64, Instant>>>) -> Self {
+    pub fn new(pool: SqlitePool, user_overrides: Arc<Mutex<HashMap<i64, Instant>>>, load_shifting_enabled: Arc<Mutex<bool>>) -> Self {
         Self { 
             pool,
             current_time: Arc::new(Mutex::new(Utc::now().naive_utc())),
             user_overrides,
+            load_shifting_enabled,
         }
     }
 
@@ -58,8 +60,10 @@ impl Simulator {
         let is_peak = hour >= 18.0 && hour < 22.0;
         let is_post_peak = hour >= 22.0 && hour < 22.5; // 30 mins after peak to restore
 
+        let shifting_enabled = *self.load_shifting_enabled.lock().await;
+
         for device in &mut devices {
-            if device.priority < 2 { // Low priority
+            if shifting_enabled && device.priority < 2 { // Low priority
                 if is_peak && device.is_on {
                     // Check for user override
                     let last_override = {
