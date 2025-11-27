@@ -53,10 +53,10 @@ export default function AnalysisPanel() {
 
     // Aggregate data for chart
     // We want to compare total cost or consumption per scenario
-    // Or maybe show a time-series comparison?
-    // Let's show a bar chart of Total Cost and Total Consumption per Scenario
     
-    const chartData = data.length > 0 ? Object.values(data.reduce((acc, curr) => {
+    const scenarioOrder = ["Baseline", "Solar", "SmartShift"];
+    
+    const rawChartData = data.reduce((acc, curr) => {
         if (!acc[curr.scenario]) {
             acc[curr.scenario] = {
                 name: curr.scenario,
@@ -69,7 +69,9 @@ export default function AnalysisPanel() {
         acc[curr.scenario].Consumption += curr.home_consumption * 0.5; // kWh
         acc[curr.scenario].Import += curr.grid_import * 0.5; // kWh
         return acc;
-    }, {} as Record<string, any>)) : [];
+    }, {} as Record<string, any>);
+
+    const chartData = scenarioOrder.map(s => rawChartData[s]).filter(Boolean);
 
     return (
         <div className="card" style={{ gridColumn: 'span 4' }}>

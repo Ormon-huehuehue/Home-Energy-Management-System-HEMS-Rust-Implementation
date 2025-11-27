@@ -9,8 +9,8 @@ use crate::models::Device;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Scenario {
     Baseline,
-    LoadShifting,
-    SolarOnly,
+    Solar,
+    SmartShift,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -26,7 +26,7 @@ pub struct AnalysisRecord {
 }
 
 pub async fn run_analysis(pool: &SqlitePool) -> Result<(Vec<String>, String, Vec<AnalysisRecord>), Box<dyn Error>> {
-    let scenarios = vec![Scenario::Baseline, Scenario::LoadShifting, Scenario::SolarOnly];
+    let scenarios = vec![Scenario::Baseline, Scenario::Solar, Scenario::SmartShift];
     let mut file_paths = Vec::new();
     let mut summary = String::new();
     let mut all_records = Vec::new();
@@ -62,7 +62,7 @@ pub async fn run_analysis(pool: &SqlitePool) -> Result<(Vec<String>, String, Vec
     }
 
     for scenario in scenarios {
-        let (records, total_cost, total_energy_saved) = simulate_day(scenario, &devices, &solar_profile);
+        let (records, total_cost, total_grid_import, _total_consumption) = simulate_day(scenario, &devices, &solar_profile);
         
         let filename = format!("{}/analysis_{:?}.csv", reports_dir, scenario);
         let mut wtr = csv::Writer::from_path(&filename)?;
@@ -73,21 +73,25 @@ pub async fn run_analysis(pool: &SqlitePool) -> Result<(Vec<String>, String, Vec
         wtr.flush()?;
         
         file_paths.push(filename);
-        summary.push_str(&format!("\nScenario: {:?}\nTotal Cost: ${:.2}\nTotal Energy Saved (vs Baseline): {:.2} kWh\n", scenario, total_cost, total_energy_saved));
+        summary.push_str(&format!("\nScenario: {:?}\nTotal Cost: ${:.2}\nTotal Grid Import: {:.2} kWh\n", scenario, total_cost, total_grid_import));
         all_records.extend(records);
     }
 
     Ok((file_paths, summary, all_records))
 }
 
-fn simulate_day(scenario: Scenario, devices: &[Device], solar_profile: &[f64]) -> (Vec<AnalysisRecord>, f64, f64) {
+fn simulate_day(scenario: Scenario, devices: &[Device], solar_profile: &[f64]) -> (Vec<AnalysisRecord>, f64, f64, f64) {
     let mut records = Vec::new();
     let mut total_cost = 0.0;
     let mut total_consumption = 0.0;
+    let mut total_grid_import = 0.0;
     
     // Calculate potential load from currently ON devices
     let active_devices: Vec<&Device> = devices.iter().filter(|d| d.is_on).collect();
     let total_potential_load: f64 = active_devices.iter().map(|d| d.power_rating).sum();
+
+    // Track deferred energy for SmartShift
+    let mut deferred_energy = 0.0; // kWh
 
     // Simulate 24 hours in 30-minute intervals (48 steps)
     for step in 0..48 {
@@ -108,30 +112,41 @@ fn simulate_day(scenario: Scenario, devices: &[Device], solar_profile: &[f64]) -
         let mut appliance_load = 0.0;
 
         match scenario {
-            Scenario::Baseline => {
+            Scenario::Baseline | Scenario::Solar => {
+                // Standard operation: All active devices run all day
                 appliance_load = total_potential_load;
             },
-            Scenario::LoadShifting => {
-                // Calculate load but exclude low priority devices during peak
-                for device in &active_devices {
-                    if is_peak && device.priority < 2 {
-                        // Shifted (Turned Off)
-                    } else {
-                        appliance_load += device.power_rating;
-                    }
-                }
-            },
-            Scenario::SolarOnly => {
-                // Only run if solar > load
-                // Or simplified: only run if solar generation is significant
-                if solar_generation > 0.5 {
-                     appliance_load = total_potential_load;
-                } else {
-                    // Only critical devices (priority >= 2) run
-                     for device in &active_devices {
-                        if device.priority >= 2 {
+            Scenario::SmartShift => {
+                if is_peak {
+                    // During peak: Turn off low priority devices and defer their energy
+                    for device in &active_devices {
+                        if device.priority < 2 {
+                            // Shifted (Turned Off)
+                            // Add to deferred energy. Power * Time (0.5h)
+                            deferred_energy += device.power_rating * 0.5;
+                        } else {
                             appliance_load += device.power_rating;
                         }
+                    }
+                } else {
+                    // Off-peak: Run standard load + Rebound deferred energy
+                    appliance_load = total_potential_load;
+                    
+                    // If we are AFTER peak (e.g., after 22:00), try to consume deferred energy
+                    if hour >= 22.0 && deferred_energy > 0.0 {
+                        // We must consume all deferred energy before midnight to ensure fair comparison (same total work)
+                        // Calculate remaining steps (including this one)
+                        let remaining_steps = 48 - step;
+                        
+                        // Distribute remaining energy evenly across remaining steps
+                        // This simulates running the deferred appliances in parallel or faster
+                        let energy_per_step = deferred_energy / remaining_steps as f64;
+                        
+                        appliance_load += energy_per_step / 0.5; // Convert energy back to power (kW)
+                        
+                        // We don't subtract from deferred_energy here because we recalculate 'remaining' each step
+                        // Actually, simpler: just take the chunk we decided to use.
+                        deferred_energy -= energy_per_step;
                     }
                 }
             }
@@ -152,6 +167,7 @@ fn simulate_day(scenario: Scenario, devices: &[Device], solar_profile: &[f64]) -
         
         total_cost += cost;
         total_consumption += home_consumption * 0.5;
+        total_grid_import += grid_import * 0.5;
 
         records.push(AnalysisRecord {
             time_step: format!("{:02}:{:02}", hour.trunc() as i32, (hour.fract() * 60.0) as i32),
@@ -165,7 +181,7 @@ fn simulate_day(scenario: Scenario, devices: &[Device], solar_profile: &[f64]) -
         });
     }
     
-    (records, total_cost, total_consumption)
+    (records, total_cost, total_grid_import, total_consumption)
 }
 
 #[cfg(test)]
@@ -183,9 +199,10 @@ mod tests {
     fn test_simulation_runs() {
         let devices = get_mock_devices();
         let solar_profile = vec![0.0; 48];
-        let (records, cost, consumption) = simulate_day(Scenario::Baseline, &devices, &solar_profile);
+        let (records, cost, grid_import, consumption) = simulate_day(Scenario::Baseline, &devices, &solar_profile);
         assert_eq!(records.len(), 48);
         assert!(cost > 0.0);
+        assert!(grid_import > 0.0);
         assert!(consumption > 0.0);
     }
 
@@ -193,13 +210,15 @@ mod tests {
     fn test_scenarios_differ() {
         let devices = get_mock_devices();
         let solar_profile = vec![1.0; 48]; // High solar for testing
-        let (_, cost_baseline, _) = simulate_day(Scenario::Baseline, &devices, &solar_profile);
-        let (_, cost_shifting, _) = simulate_day(Scenario::LoadShifting, &devices, &solar_profile);
+        let (_, cost_baseline, _, consumption_baseline) = simulate_day(Scenario::Baseline, &devices, &solar_profile);
+        let (_, cost_smart, _, consumption_smart) = simulate_day(Scenario::SmartShift, &devices, &solar_profile);
         
-        // Load shifting should be cheaper or equal (if no peak load)
-        // Note: Baseline now has 0 solar, so it will be much more expensive than others if they have solar.
-        // But LoadShifting vs Baseline (with 0 solar) is tricky comparison if we change baseline definition.
-        // If Baseline has 0 solar, and LoadShifting has solar, LoadShifting will be WAY cheaper.
-        assert!(cost_shifting <= cost_baseline);
+        // SmartShift should be cheaper than Baseline (due to solar + shifting)
+        assert!(cost_smart <= cost_baseline);
+
+        // CRITICAL: Total consumption must be equal (fair comparison)
+        // Use a small epsilon for floating point comparison
+        assert!((consumption_baseline - consumption_smart).abs() < 0.001, 
+            "Total consumption should be equal! Baseline: {}, Smart: {}", consumption_baseline, consumption_smart);
     }
 }
